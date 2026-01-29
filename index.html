@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Golovo Egypt</title>
+<link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+<script src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY"></script>
+</head>
+<body class="bg-gray-100">
+
+<header class="p-4 text-2xl font-bold text-black">Golovo Egypt</header>
+
+<div id="map" class="w-full h-64 bg-gray-300 mb-4"></div>
+
+<div class="p-4 bg-white rounded-t-3xl shadow-lg">
+  <input id="from" class="w-full p-3 mb-2 rounded-xl bg-gray-100" placeholder="من أين؟">
+  <input id="to" class="w-full p-3 mb-2 rounded-xl bg-gray-100" placeholder="إلى أين؟">
+  <div id="price" class="text-lg font-semibold mb-2">السعر: --</div>
+  <button id="orderBtn" class="w-full p-4 bg-black text-white rounded-xl">اطلب الآن</button>
+</div>
+
+<script>
+  // Firebase
+  const firebaseConfig = {
+    apiKey: "YOUR_FIREBASE_KEY",
+    authDomain: "YOUR_PROJECT.firebaseapp.com",
+    projectId: "YOUR_PROJECT_ID",
+    storageBucket: "YOUR_PROJECT.appspot.com",
+    messagingSenderId: "YOUR_ID",
+    appId: "YOUR_APP_ID"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+
+  // Google Maps
+  let map;
+  function initMap() {
+    map = new google.maps.Map(document.getElementById("map"), {
+      center: { lat: 30.0444, lng: 31.2357 },
+      zoom: 12,
+    });
+  }
+  window.onload = initMap;
+
+  // حساب السعر وحفظ الطلب
+  document.getElementById("orderBtn").addEventListener("click", async () => {
+    const from = document.getElementById("from").value;
+    const to = document.getElementById("to").value;
+    if(!from || !to){ alert("اكتب المكانين"); return; }
+
+    const price = Math.floor(Math.random() * 50) + 25; 
+    document.getElementById("price").innerText = `السعر: ${price} جنيه`;
+
+    await db.collection("orders").add({
+      from, to, price, status: "pending", createdAt: new Date()
+    });
+    alert("تم ارسال الطلب!");
+  });
+</script>
+
+</body>
+</html>
+// auth.js
+import { auth, signInWithPhoneNumber, db } from "./firebase.js";
+
+// تسجيل دخول العملاء بالكود OTP
+async function loginCustomer(phoneNumber) {
+  const confirmation = await signInWithPhoneNumber(auth, phoneNumber, window.recaptchaVerifier);
+  const code = prompt("ادخل كود OTP");
+  await confirmation.confirm(code);
+  alert("تم تسجيل الدخول بنجاح!");
+}
+
+// تحديث المديونية للكابتن
+async function updateDebt(driverId, amount) {
+  const driverRef = db.collection("drivers").doc(driverId);
+  const doc = await driverRef.get();
+  let debt = doc.data().debt || 0;
+  debt += amount;
+
+  if(debt >= 1000) {
+    await driverRef.update({ debt, active: false });
+    alert("تم إيقاف حسابك مؤقتًا بسبب المديونية. الرجاء السداد على 01020744825");
+  } else {
+    await driverRef.update({ debt });
+  }
+}
+<!-- dashboard.html -->
+<div class="p-4">
+  <h1 class="text-2xl font-bold mb-4">لوحة تحكم Golovo Egypt</h1>
+
+  <div id="driversList" class="mb-4"></div>
+  <div id="ordersList"></div>
+</div>
+
+<script>
+  // عرض الكباتن مع المديونية والحالة
+  db.collection("drivers").onSnapshot(snapshot => {
+    const driversList = document.getElementById("driversList");
+    driversList.innerHTML = "";
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      driversList.innerHTML += `<div class="p-2 border mb-2">
+        ${data.name} - مديونية: ${data.debt} جنيه - ${data.active ? 'نشط' : 'متوقف'}
+      </div>`;
+    });
+  });
+
+  // عرض الطلبات
+  db.collection("orders").onSnapshot(snapshot => {
+    const ordersList = document.getElementById("ordersList");
+    ordersList.innerHTML = "";
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      ordersList.innerHTML += `<div class="p-2 border mb-2">
+        من: ${data.from} | إلى: ${data.to} | السعر: ${data.price} | الحالة: ${data.status}
+      </div>`;
+    });
+  });
+</script>
+
