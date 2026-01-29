@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Golovo Egypt – لوحة التحكم</title>
+<link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+<script type="module" src="firebase.js"></script>
+</head>
+<body class="bg-gray-100 p-4">
+
+<h1 class="text-2xl font-bold mb-4">لوحة تحكم Golovo Egypt</h1>
+
+<h2 class="text-xl font-semibold mb-2">الكباتن</h2>
+<div id="driversList" class="mb-4"></div>
+
+<h2 class="text-xl font-semibold mb-2">الطلبات</h2>
+<div id="ordersList"></div>
+
+<script type="module">
+import { db } from './firebase.js';
+
+db.collection("drivers").onSnapshot(snapshot => {
+  const driversList = document.getElementById("driversList");
+  driversList.innerHTML = "";
+  snapshot.forEach(doc => {
+    const data = doc.data();
+    driversList.innerHTML += `<div class="p-2 border mb-2">
+      ${data.name} - مديونية: ${data.debt || 0} جنيه - ${data.active ? 'نشط' : 'متوقف'}
+    </div>`;
+  });
+});
+
+db.collection("orders").onSnapshot(snapshot => {
+  const ordersList = document.getElementById("ordersList");
+  ordersList.innerHTML = "";
+  snapshot.forEach(doc => {
+    const data = doc.data();
+    ordersList.innerHTML += `<div class="p-2 border mb-2">
+      من: ${data.from} | إلى: ${data.to} | السعر: ${data.price} | الحالة: ${data.status}
+    </div>`;
+  });
+});
+</script>
+
+</body>
+</html>
+
